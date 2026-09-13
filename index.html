@@ -2690,12 +2690,14 @@
       const SEC1_SHIFT = 0.06;
       const sh = (a, b) => [a - SEC1_SHIFT, b - SEC1_SHIFT];
 
-      // The "Learn./Adapt./Build." finale needs 60% less scroll to fully
-      // reveal on mobile only — same start point, shorter fade-in.
+      // The "Learn./Adapt./Build." finale needs less scroll to fully reveal:
+      // 60% less on mobile, and now 70% less on desktop too — same start
+      // point each time, just a shorter fade-in.
       function finalPhase(a, b) {
         const [na, nb] = sh(a, b);
-        if (!isMobileTypo) return [na, nb];
-        return [na, na + (nb - na) * 0.4];
+        const width = nb - na;
+        const scale = isMobileTypo ? 0.4 : 0.3;
+        return [na, na + width * scale];
       }
 
       function render() {
