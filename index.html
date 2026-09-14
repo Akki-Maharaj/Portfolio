@@ -1391,6 +1391,16 @@
         right: 20px;
         left: auto
       }
+
+      /* "web development project." wraps across two lines on narrow
+         screens (see layoutFirst() in the typography script) — sizing
+         these three words down a bit keeps each line comfortably inside
+         the viewport instead of nearly touching the edges. */
+      #web,
+      #development,
+      #project {
+        font-size: clamp(30px, 8.5vw, 58px);
+      }
     }
 
     /* ========================================================
@@ -2689,10 +2699,9 @@
         if (isMobileTypo) {
           // Narrow phones don't have room for "web development project."
           // on one line without the words overlapping — split it across
-          // three lines instead.
-          placeLine(['web'], 52);
-          placeLine(['development'], 64);
-          placeLine(['project'], 76);
+          // two lines instead.
+          placeLine(['web', 'development'], 56);
+          placeLine(['project'], 72);
         } else {
           placeLine(['web', 'development', 'project'], 58);
         }
