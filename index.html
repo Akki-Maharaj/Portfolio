@@ -2686,7 +2686,16 @@
         };
         placeLine(['this', 'was', 'my'], 14);
         placeLine(['first', 'ever', 'deployed'], 36);
-        placeLine(['web', 'development', 'project'], 58);
+        if (isMobileTypo) {
+          // Narrow phones don't have room for "web development project."
+          // on one line without the words overlapping — split it across
+          // three lines instead.
+          placeLine(['web'], 52);
+          placeLine(['development'], 64);
+          placeLine(['project'], 76);
+        } else {
+          placeLine(['web', 'development', 'project'], 58);
+        }
       }
 
       const isMobileTypo = window.matchMedia('(max-width: 700px)').matches;
