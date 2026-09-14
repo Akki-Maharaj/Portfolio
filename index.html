@@ -2659,18 +2659,29 @@
 
       function layoutFirst() {
         const gap = 32;
+        const edge = 8; // minimum breathing room from the viewport edge
         const vw = window.innerWidth / 100;
         const px = id => $(id) ? $(id).getBoundingClientRect().width : 0;
         const placeLine = (line, y) => {
           const widths = line.map(px);
           const total = widths.reduce((sum, w) => sum + w, 0) + gap * (line.length - 1);
-          let left = (window.innerWidth - total) / 2;
+          let left = Math.max(edge, (window.innerWidth - total) / 2);
+          // Safety clamp: on some Android/webview combos the words get measured
+          // a frame before their webfont has actually swapped in, so `total`
+          // can be under-estimated and the last word (usually "project.")
+          // ends up positioned past the right edge of the screen. Clamping
+          // each word's left position to stay fully inside the viewport
+          // guarantees nothing ever renders off-screen, even if the layout
+          // has to overlap words slightly on very narrow screens.
           line.forEach((id, i) => {
+            const w = widths[i];
+            const maxLeft = Math.max(edge, window.innerWidth - edge - w);
+            const clampedLeft = Math.min(left, maxLeft);
             if (first[id]) {
-              first[id].tx = left / vw;
+              first[id].tx = clampedLeft / vw;
               first[id].ty = y;
             }
-            left += widths[i] + gap;
+            left = clampedLeft + w + gap;
           });
         };
         placeLine(['this', 'was', 'my'], 14);
@@ -2678,8 +2689,8 @@
         placeLine(['web', 'development', 'project'], 58);
       }
 
-      const ANIM_VH = window.matchMedia('(max-width: 700px)').matches ? 280 : 1160;
       const isMobileTypo = window.matchMedia('(max-width: 700px)').matches;
+      const ANIM_VH_BASE = isMobileTypo ? 280 : 1160;
 
       // The opening word-scatter scene needed 0.20 of the timeline (0 -> 0.20)
       // to fully move in, hold, and fade out. Shrinking that window by 30%
@@ -2690,11 +2701,44 @@
       const SEC1_SHIFT = 0.06;
       const sh = (a, b) => [a - SEC1_SHIFT, b - SEC1_SHIFT];
 
+      // Everything from the word-cloud ("learn / research / try / ...")
+      // onward — the word-cloud itself, the figure reveal, the final
+      // "Learn./Adapt./Build." message, AND the long static hold before the
+      // section unpins to the footer — is compressed together to ~25% of
+      // its original scroll length (a ~75% cut), desktop only. Everything
+      // before that point (the opening word-scatter, "three days", the
+      // backdrop transition, the sliding question) is left exactly as-is.
+      const TAIL_START = 0.56 - SEC1_SHIFT; // where the word-cloud begins
+      const TAIL_SCALE = isMobileTypo ? 1 : 0.25;
+
+      const HOLD_VH_BASE = 1650 - ANIM_VH_BASE; // original post-animation hold
+      const TAIL_VH_BASE = (1 - TAIL_START) * ANIM_VH_BASE; // old length of "tail" (process+figure+final)
+      const TAIL_VH_NEW = TAIL_VH_BASE * TAIL_SCALE;
+      const ANIM_VH = TAIL_START * ANIM_VH_BASE + TAIL_VH_NEW;
+      const HOLD_VH = HOLD_VH_BASE * TAIL_SCALE;
+
+      if (!isMobileTypo) {
+        stage.style.height = `${ANIM_VH + HOLD_VH}vh`;
+      }
+
+      function compressProc(x) {
+        if (x <= TAIL_START) return x;
+        const vh = TAIL_START * ANIM_VH_BASE + (x - TAIL_START) * ANIM_VH_BASE * TAIL_SCALE;
+        return vh / ANIM_VH;
+      }
+
+      // Use this instead of `sh` for anything inside or after the word-cloud
+      // scene (the word-cloud itself, and everything that follows it).
+      const shp = (a, b) => {
+        const [na, nb] = sh(a, b);
+        return [compressProc(na), compressProc(nb)];
+      };
+
       // The "Learn./Adapt./Build." finale needs less scroll to fully reveal:
       // 60% less on mobile, and now 70% less on desktop too — same start
       // point each time, just a shorter fade-in.
       function finalPhase(a, b) {
-        const [na, nb] = sh(a, b);
+        const [na, nb] = shp(a, b);
         const width = nb - na;
         const scale = isMobileTypo ? 0.4 : 0.3;
         return [na, na + width * scale];
@@ -2715,8 +2759,8 @@
 
         /* FIRST: move into place, then hold, then staggered exit
            (window shrunk 0.20 -> 0.14, a 30% reduction in scroll needed) */
-        const move = phase(p, 0, 0.0378);
-        const topFade = 1 - phase(p, 0.119, 0.14);
+        const move = phase(p, compressProc(0), compressProc(0.0378));
+        const topFade = 1 - phase(p, compressProc(0.119), compressProc(0.14));
         const bottomFade = topFade;
         const wordColorVal = Math.round(lerp(185, 0, move));
         const wordColor = `rgb(${wordColorVal},${wordColorVal},${wordColorVal})`;
@@ -2733,8 +2777,8 @@
         });
 
         /* THREE DAYS */
-        const tin = phase(p, ...sh(0.248, 0.278));
-        const tout = 1 - phase(p, ...sh(0.332, 0.356));
+        const tin = phase(p, ...shp(0.248, 0.278));
+        const tout = 1 - phase(p, ...shp(0.332, 0.356));
         const threeEl = $('three');
         if (threeEl) {
           threeEl.style.opacity = Math.min(tin, tout);
@@ -2742,7 +2786,7 @@
         }
 
         /* BACKDROP: transition */
-        const bgT = phase(p, ...sh(0.362, 0.452));
+        const bgT = phase(p, ...shp(0.362, 0.452));
         const bgVal = Math.round(lerp(245, 0, bgT));
         const bgVal2 = Math.round(lerp(242, 0, bgT));
         const bgEl = $('bg');
@@ -2751,11 +2795,12 @@
         }
 
         /* QUESTION: soft fade + slow long travel */
-        const qWrapIn = phase(p, ...sh(0.416, 0.446));
-        const qWrapOut = 1 - phase(p, ...sh(0.545, 0.585));
+        const qWrapIn = phase(p, ...shp(0.416, 0.446));
+        const qWrapOut = 1 - phase(p, ...shp(0.545, 0.585));
         const qEl = $('question');
         if (qEl) qEl.style.opacity = Math.min(qWrapIn, qWrapOut);
-        const q = clamp((p - (0.4222 - SEC1_SHIFT)) / 0.150);
+        const [qA, qB] = shp(0.4222, 0.4222 + 0.150);
+        const q = clamp((p - qA) / (qB - qA));
         const qText = $('questionText');
         if (qText) {
           // On mobile, use the actual text width so the full sentence,
@@ -2774,8 +2819,8 @@
         }
 
         /* PROCESS: staggered entrances */
-        const procIn = phase(p, ...sh(0.56, 0.60));
-        const procOut = 1 - phase(p, ...sh(0.80, 0.83));
+        const procIn = phase(p, ...shp(0.56, 0.60));
+        const procOut = 1 - phase(p, ...shp(0.80, 0.83));
         const procEl = $('process');
         if (procEl) procEl.style.opacity = Math.min(procIn, procOut);
 
@@ -2798,7 +2843,7 @@
         positions.forEach((a, i) => {
           const el = $(a[0]);
           if (!el) return;
-          const e = phase(p, ...sh(0.605 + i * 0.0055, 0.645 + i * 0.0055));
+          const e = phase(p, ...shp(0.605 + i * 0.0055, 0.645 + i * 0.0055));
           const x = a[1] + (i % 2 ? -7 : 7) * (1 - e);
           const y = a[2] + (i % 2 ? 2 : -2) * (1 - e);
           const s = a[4];
@@ -2807,8 +2852,8 @@
         });
 
         /* FIGURE: hold before clear */
-        const figIn = phase(p, ...sh(0.84, 0.86));
-        const figOut = 1 - phase(p, ...sh(0.94, 0.955));
+        const figIn = phase(p, ...shp(0.84, 0.86));
+        const figOut = 1 - phase(p, ...shp(0.94, 0.955));
         const fig = Math.min(figIn, figOut);
         const figureEl = $('figure');
         if (figureEl) {
@@ -2838,7 +2883,15 @@
       }, { passive: true });
       window.addEventListener('resize', () => { layoutFirst(); render(); });
       if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(() => { layoutFirst(); render(); });
+        document.fonts.ready.then(() => {
+          layoutFirst(); render();
+          // Some Android browsers report `fonts.ready` a frame or two before
+          // the swapped webfont is actually painted, so the very first
+          // measurement can still be off. A couple of cheap re-checks shortly
+          // after catch that case without any visible flicker.
+          setTimeout(() => { layoutFirst(); render(); }, 120);
+          setTimeout(() => { layoutFirst(); render(); }, 500);
+        });
       }
       layoutFirst();
       render();
