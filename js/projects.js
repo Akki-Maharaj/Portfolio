@@ -15,6 +15,13 @@
       if (!section || !space || !wheel || !numbers.length || !copy) return;
       const projects = [
         {
+          title: 'Treasury',
+          subtitle: 'AI Thrift Marketplace · FastAPI · Supabase',
+          description: 'OLX-style thrift marketplace with AI sell-assist (category detection, attribute extraction, adaptive questions) and a MiniLM-powered personalized recommender. FastAPI, Supabase, scikit-learn.',
+          image: 'assets/images/Treasury.png',
+          link: 'https://treasury-1.onrender.com/'
+        },
+        {
           title: 'Metal Defect Detection',
           subtitle: 'Classical Computer Vision + ML',
           description: 'CPU-based computer vision system to classify and localize metal surface defects using handcrafted image features and SVM, achieving 94.1% test accuracy.',
@@ -80,10 +87,11 @@
         while (d < -180) d += 360;
         return d;
       }
+      const angleStep = 360 / projects.length;
       function paintOrbit() {
         const radius = Math.min(315, wheel.clientWidth * 0.4375);
         numbers.forEach((n, i) => {
-          const rad = (i * 72 + orbitAngle) * Math.PI / 180;
+          const rad = (i * angleStep + orbitAngle) * Math.PI / 180;
           const x = Math.cos(rad) * radius;
           const y = Math.sin(rad) * radius;
           n.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
@@ -130,7 +138,9 @@
       }
       function fillCopy(index) {
         const p = projects[index];
-        count.textContent = `${String(index + 1).padStart(2, '0')} / 05`;
+        const totalFormatted = String(projects.length).padStart(2, '0');
+        const currentFormatted = String(index + 1).padStart(2, '0');
+        count.textContent = `${currentFormatted} / ${totalFormatted}`;
         title.textContent = p.title;
         subtitle.textContent = p.subtitle;
         description.textContent = p.description;
@@ -138,7 +148,7 @@
           thumbImage.alt = `${p.title} preview`;
           thumbImage.src = p.image;
         }
-        progress.textContent = `${String(index + 1).padStart(2, '0')} — 05`;
+        progress.textContent = `${currentFormatted} — ${totalFormatted}`;
         if (p.link) {
           link.href = p.link;
           link.textContent = 'View Project ↗';
@@ -158,7 +168,7 @@
         const index = Math.round(continuous);
         const displayPosition = index;
         wheel.style.transform = 'translateY(-50%)';
-        const targetAngle = -index * 72;
+        const targetAngle = -index * angleStep;
         if (index !== active) {
           setProject(index, true);
           animateOrbit(targetAngle);
