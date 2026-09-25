@@ -19,7 +19,7 @@
           subtitle: 'Language Model · PyTorch · From Scratch',
           description: "A 30M-parameter decoder-only GPT built entirely from scratch \u2014 custom byte-level BPE tokenizer, FlashAttention, and a memory-mapped data pipeline to train on English Wikipedia within Colab's RAM limits. Fine-tuned for Q&A on Dolly-15k and Alpaca, including debugging a subtle target-alignment bug in the training loop. Currently being scaled up to a 124M-parameter version.",
           image: 'assets/images/SLM.png',
-          link: 'SLM_LINK'
+          link: 'https://github.com/Akki-Maharaj/SLM'
         },
         {
           title: 'Treasury',
